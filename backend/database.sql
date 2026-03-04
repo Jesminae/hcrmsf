@@ -1,4 +1,4 @@
-USE hcrms;
+USE railway;
 
 -- USERS
 CREATE TABLE IF NOT EXISTS users (
