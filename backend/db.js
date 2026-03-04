@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS complaints (
   status ENUM('Pending','In Progress','Resolved') DEFAULT 'Pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-`);
+ );
   }
 });
 
