@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Student Dashboard - HCRMS</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<script>
+if (localStorage.getItem("userRole") !== "student") {
+  alert("Access denied");
+  window.location.href = "login.html";
+}
+</script>
+
+<h2>Student Dashboard</h2>
+<button onclick="logout()" style="float:right;">Logout</button>
+
+<div style="margin-bottom:20px; font-size:16px;">
+  <strong>Name:</strong> <span id="studentName"></span><br>
+  <strong>Username:</strong> <span id="studentUsername"></span><br>
+  <strong>Room No:</strong> <span id="studentRoom"></span>
+</div>
+
+<hr>
+
+<h3>Complaints</h3>
+<button onclick="goToComplaint()">Submit Complaint</button>
+
+<hr>
+
+<h3>Attendance</h3>
+<button onclick="markAttendance()">Mark Attendance</button>
+
+<hr>
+
+<h3>Meal Preference</h3>
+
+<select id="mealType">
+  <option value="">Select Meal Type</option>
+  <option value="Veg">Veg</option>
+  <option value="Non-Veg">Non-Veg</option>
+</select>
+
+<button onclick="submitMeal()">Submit Meal</button>
+
+<hr>
+<h3>My Complaints</h3>
+<button onclick="loadMyComplaints()">View My Complaints</button>
+
+<table>
+  <thead>
+    <tr>
+      <th>Category</th>
+      <th>Description</th>
+      <th>Status</th>
+      <th>Date</th>
+    </tr>
+  </thead>
+  <tbody id="myComplaintTable">
+    <tr><td colspan="4">Click "View My Complaints"</td></tr>
+  </tbody>
+</table>
+
+<script>
+/* Load student details */
+document.getElementById("studentName").innerText =
+  localStorage.getItem("userName") || "";
+
+document.getElementById("studentUsername").innerText =
+  localStorage.getItem("username") || "";
+
+document.getElementById("studentRoom").innerText =
+  localStorage.getItem("roomNo") || "-";
+
+/* Go to complaint page */
+function goToComplaint() {
+  window.location.href = "complaint.html";
+}
+
+/* Mark attendance */
+function markAttendance() {
+  fetch("http://localhost:5000/api/attendance/mark", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    username: localStorage.getItem("username"),
+    student_name: localStorage.getItem("userName")
+  })
+})
+  .then(res => res.json())
+  .then(data => alert(data.message || data.error))
+  .catch(() => alert("Attendance failed"));
+}
+
+/* Submit meal with live enable/disable check */
+function submitMeal() {
+  const mealType = document.getElementById("mealType").value;
+  if (!mealType) {
+    alert("Please select meal preference");
+    return;
+  }
+
+  /* Check if meal is enabled */
+  fetch("http://localhost:5000/api/meal-status")
+    .then(res => res.json())
+    .then(statusData => {
+      if (!statusData.enabled) {
+        alert("Meal entry is disabled by hostel committee");
+        return;
+      }
+
+      /* If enabled, submit meal */
+      fetch("http://localhost:5000/api/meal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          student_name: localStorage.getItem("userName"),
+          username: localStorage.getItem("username"),
+          meal_type: mealType
+        })
+      })
+      .then(res => res.json())
+      .then(data => alert(data.message || data.error))
+      .catch(() => alert("Meal submission failed"));
+    })
+    .catch(() => alert("Unable to check meal status"));
+}
+
+function loadMyComplaints() {
+  const username = localStorage.getItem("username");
+
+  fetch(`http://localhost:5000/api/complaints/student/${username}`)
+    .then(res => res.json())
+    .then(data => {
+      const table = document.getElementById("myComplaintTable");
+      table.innerHTML = "";
+
+      if (data.length === 0) {
+        table.innerHTML =
+          "<tr><td colspan='4'>No complaints submitted yet</td></tr>";
+        return;
+      }
+
+      data.forEach(c => {
+        table.innerHTML += `
+          <tr>
+            <td>${c.category}</td>
+            <td>${c.description}</td>
+            <td>${c.status}</td>
+            <td>${new Date(c.created_at).toLocaleDateString()}</td>
+          </tr>
+        `;
+      });
+    })
+    .catch(() => alert("Failed to load complaints"));
+}
+
+/* Logout */
+function logout() {
+  localStorage.clear();
+  window.location.href = "login.html";
+}
+</script>
+
+</body>
+</html>
+

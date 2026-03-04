@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Submit Complaint - HCRMS</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ROLE PROTECTION -->
+<script>
+  if (localStorage.getItem("userRole") !== "student") {
+    alert("Access denied");
+    window.location.href = "login.html";
+  }
+</script>
+
+<h2>Submit Complaint</h2>
+
+<form id="complaintForm">
+
+  <input 
+    type="text" 
+    id="student_name" 
+    placeholder="Student Name" 
+    readonly
+  >
+
+  <textarea 
+    id="description" 
+    placeholder="Describe your complaint" 
+    required
+  ></textarea>
+
+  <button type="submit">Submit Complaint</button>
+
+</form>
+
+<script>
+/* Autofill student name */
+document.getElementById("student_name").value =
+  localStorage.getItem("userName") || "";
+
+/* Submit complaint */
+document.getElementById("complaintForm").addEventListener("submit", function(e) {
+  e.preventDefault();
+
+  const data = {
+    student_name: localStorage.getItem("userName"),
+    username: localStorage.getItem("username"),
+    description: document.getElementById("description").value
+  };
+
+  fetch("http://localhost:5000/api/complaints/add", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(data)
+  })
+  .then(res => res.json())
+  .then(response => {
+    if (response.error) {
+      alert(response.error);
+      return;
+    }
+
+    alert(
+      "Complaint submitted successfully.\n" +
+      "Predicted Category: " + response.predictedCategory
+    );
+    document.getElementById("complaintForm").reset();
+  })
+  .catch(error => {
+    console.error("Error:", error);
+    alert("Failed to submit complaint");
+  });
+});
+</script>
+
+</body>
+</html>
+

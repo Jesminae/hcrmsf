@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Warden Dashboard - HCRMS</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<h2>Warden Dashboard</h2>
+<button onclick="logout()" style="float:right;">Logout</button>
+
+<!-- ROLE PROTECTION -->
+<script>
+  if (localStorage.getItem("userRole") !== "warden") {
+    alert("Access denied");
+    window.location.href = "login.html";
+  }
+</script>
+
+<!-- =================================================
+     COMPLAINT MANAGEMENT
+================================================= -->
+<h3>Student Complaints</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Student Name</th>
+      <th>Category</th>
+      <th>Description</th>
+      <th>Status</th>
+      <th>Update</th>
+    </tr>
+  </thead>
+  <tbody id="complaintTable">
+    <tr><td colspan="5">Loading complaints...</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<!-- =================================================
+     ATTENDANCE REPORT (DATE-WISE)
+================================================= -->
+<h3>Attendance Report</h3>
+
+<label>Select Date:</label>
+<input type="date" id="attendanceDate">
+<button onclick="loadAttendance()">View Attendance</button>
+
+<table>
+  <thead>
+    <tr>
+      <th>Room No</th>
+      <th>Student Name</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody id="attendanceTable">
+    <tr><td colspan="3">Select a date</td></tr>
+  </tbody>
+</table>
+
+<script>
+/* =================================================
+   LOAD COMPLAINTS
+================================================= */
+fetch("http://localhost:5000/api/complaints")
+  .then(res => res.json())
+  .then(data => {
+    const table = document.getElementById("complaintTable");
+    table.innerHTML = "";
+
+    if (data.length === 0) {
+      table.innerHTML = "<tr><td colspan='5'>No complaints</td></tr>";
+      return;
+    }
+
+    data.forEach(c => {
+      table.innerHTML += `
+        <tr>
+          <td>${c.student_name}</td>
+          <td>${c.category}</td>
+          <td>${c.description}</td>
+          <td>${c.status}</td>
+          <td>
+            <select onchange="updateStatus(${c.id}, this.value)">
+              <option value="">Select</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+          </td>
+        </tr>
+      `;
+    });
+  })
+  .catch(() => alert("Failed to load complaints"));
+
+/* =================================================
+   UPDATE COMPLAINT STATUS
+================================================= */
+function updateStatus(id, status) {
+  if (!status) return;
+
+  fetch(`http://localhost:5000/api/complaints/update/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status })
+  })
+  .then(() => {
+    alert("Complaint status updated");
+    location.reload();
+  })
+  .catch(() => alert("Failed to update status"));
+}
+
+/* =================================================
+   LOAD ATTENDANCE BY DATE
+================================================= */
+function loadAttendance() {
+  const date = document.getElementById("attendanceDate").value;
+
+  if (!date) {
+    alert("Please select a date");
+    return;
+  }
+
+  fetch(`http://localhost:5000/api/attendance/by-date/${date}`)
+    .then(res => res.json())
+    .then(data => {
+      const table = document.getElementById("attendanceTable");
+      table.innerHTML = "";
+
+      if (data.length === 0) {
+        table.innerHTML =
+          "<tr><td colspan='3'>No attendance for selected date</td></tr>";
+        return;
+      }
+
+      data.forEach(a => {
+        table.innerHTML += `
+          <tr>
+            <td>${a.room_no}</td>
+            <td>${a.student_name}</td>
+            <td>${a.status}</td>
+          </tr>
+        `;
+      });
+    })
+    .catch(() => alert("Failed to load attendance"));
+}
+</script>
+
+<script>
+function logout() {
+  localStorage.clear();
+  window.location.href = "login.html";
+}
+</script>
+
+</body>
+</html>

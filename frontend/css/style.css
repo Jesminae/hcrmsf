@@ -1,0 +1,49 @@
+body {
+  font-family: Arial;
+  background: #f4f6f9;
+  padding: 20px;
+}
+
+.login-box {
+  width: 300px;
+  margin: auto;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+}
+
+input, select, textarea, button {
+  width: 100%;
+  margin: 8px 0;
+  padding: 8px;
+}
+
+.menu a {
+  display: block;
+  margin: 10px 0;
+  text-decoration: none;
+  background: #007bff;
+  color: white;
+  padding: 10px;
+  text-align: center;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+th, td {
+  padding: 10px;
+  border: 1px solid #ccc;
+  text-align: center;
+}
+
+th {
+  background-color: #007bff;
+  color: white;
+}
+
+select {
+  padding: 5px;
+}

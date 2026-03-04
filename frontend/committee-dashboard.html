@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hostel Committee Dashboard - HCRMS</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<h2>Hostel Committee Dashboard</h2>
+<button onclick="logout()" style="float:right;">Logout</button>
+
+<!-- ROLE PROTECTION -->
+<script>
+if (localStorage.getItem("userRole") !== "committee") {
+  alert("Access denied");
+  window.location.href = "login.html";
+}
+</script>
+
+<!-- ================= MEAL CONTROLS ================= -->
+<button id="mealToggleBtn" onclick="toggleMeal()">Loading...</button>
+<button onclick="loadMealReport()">View Meal Report</button>
+<button style="background:red;color:white" onclick="deleteMealList()">Delete Meal List</button>
+
+<hr>
+
+<!-- ================= MEAL SUMMARY ================= -->
+<h3>Meal Count Summary (Today)</h3>
+<p id="mealSummary">Veg: 0 | Non-Veg: 0</p>
+
+<!-- ================= MEAL LIST ================= -->
+<h3>Student Meal List (Today)</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Room No</th>
+      <th>Student Name</th>
+      <th>Meal Preference</th>
+    </tr>
+  </thead>
+  <tbody id="mealTable">
+    <tr><td colspan="3">No meal entries found</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<!-- ================= ATTENDANCE ================= -->
+<h3>Attendance Report</h3>
+<label>Select Date:</label>
+<input type="date" id="attendanceDate">
+<button onclick="loadAttendance()">View Attendance</button>
+
+<table>
+  <thead>
+    <tr>
+      <th>Room No</th>
+      <th>Student Name</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody id="attendanceTable">
+    <tr><td colspan="3">Select a date</td></tr>
+  </tbody>
+</table>
+
+<hr>
+<h3>Monthly Meal Count (Per Student)</h3>
+
+<label>Year:</label>
+<input type="number" id="mYear" placeholder="2026" style="width:100px">
+
+<label>Month:</label>
+<select id="mMonth">
+  <option value="1">Jan</option><option value="2">Feb</option>
+  <option value="3">Mar</option><option value="4">Apr</option>
+  <option value="5">May</option><option value="6">Jun</option>
+  <option value="7">Jul</option><option value="8">Aug</option>
+  <option value="9">Sep</option><option value="10">Oct</option>
+  <option value="11">Nov</option><option value="12">Dec</option>
+</select>
+
+<button onclick="loadMonthlyStudentMeal()">View Monthly Student Report</button>
+
+<table border="1" style="margin-top:10px; width:100%;">
+  <thead>
+    <tr>
+      <th>Username</th>
+      <th>Veg</th>
+      <th>Non-Veg</th>
+      <th>Total</th>
+    </tr>
+  </thead>
+  <tbody id="monthlyStudentTable">
+    <tr><td colspan="4">Select month and year</td></tr>
+  </tbody>
+</table>
+
+<script>
+/* Load meal status on page load */
+window.onload = function () {
+  fetch("http://localhost:5000/api/meal-status")
+    .then(res => res.json())
+    .then(data => updateMealButton(data.enabled))
+    .catch(() => {
+      document.getElementById("mealToggleBtn").innerText =
+        "Enable / Disable Meal Count";
+    });
+};
+
+/* Update toggle button text */
+function updateMealButton(enabled) {
+  const btn = document.getElementById("mealToggleBtn");
+  if (enabled) {
+    btn.innerText = "Disable Meal Count";
+    btn.style.background = "orange";
+  } else {
+    btn.innerText = "Enable Meal Count";
+    btn.style.background = "green";
+    btn.style.color = "white";
+  }
+}
+
+/* Toggle meal */
+function toggleMeal() {
+  fetch("http://localhost:5000/api/meal-toggle", { method: "POST" })
+    .then(res => res.json())
+    .then(msg => {
+      alert(msg.message);
+      return fetch("http://localhost:5000/api/meal-status");
+    })
+    .then(res => res.json())
+    .then(data => updateMealButton(data.enabled))
+    .catch(() => alert("Toggle failed"));
+}
+
+/* Load meal report */
+function loadMealReport() {
+  fetch("http://localhost:5000/api/meal-summary")
+    .then(res => res.json())
+    .then(data => {
+      let veg = 0, nonveg = 0;
+      data.forEach(r => {
+        if (r.meal_type === "Veg") veg = r.count;
+        if (r.meal_type === "Non-Veg") nonveg = r.count;
+      });
+      document.getElementById("mealSummary").innerText =
+        `Veg: ${veg} | Non-Veg: ${nonveg}`;
+    });
+
+  fetch("http://localhost:5000/api/meal-list")
+    .then(res => res.json())
+    .then(data => {
+      const table = document.getElementById("mealTable");
+      table.innerHTML = "";
+      if (data.length === 0) {
+        table.innerHTML = "<tr><td colspan='3'>No meal entries found</td></tr>";
+        return;
+      }
+      data.forEach(m => {
+        table.innerHTML += `
+          <tr>
+            <td>${m.room_no || "-"}</td>
+            <td>${m.student_name}</td>
+            <td>${m.meal_type}</td>
+          </tr>`;
+      });
+    });
+}
+
+/* Delete all meals today */
+function deleteMealList() {
+  const pwd = prompt("Enter committee password:");
+  if (!pwd) return;
+
+  fetch("http://localhost:5000/api/meal-delete-all", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ committeePassword: pwd })
+  })
+  .then(res => res.json())
+  .then(msg => {
+    alert(msg.message);
+    loadMealReport();
+  });
+}
+
+/* Load attendance by date */
+function loadAttendance() {
+  const date = document.getElementById("attendanceDate").value;
+  if (!date) return alert("Select a date");
+
+  fetch(`http://localhost:5000/api/attendance/by-date/${date}`)
+    .then(res => res.json())
+    .then(data => {
+      const table = document.getElementById("attendanceTable");
+      table.innerHTML = "";
+      if (data.length === 0) {
+        table.innerHTML = "<tr><td colspan='3'>No attendance found</td></tr>";
+        return;
+      }
+      data.forEach(a => {
+        table.innerHTML += `
+          <tr>
+            <td>${a.room_no || "-"}</td>
+            <td>${a.student_name}</td>
+            <td>${a.status}</td>
+          </tr>`;
+      });
+    });
+}
+
+/* Logout */
+function logout() {
+  localStorage.clear();
+  window.location.href = "login.html";
+}
+
+function loadMonthlyStudentMeal() {
+  const year = document.getElementById("mYear").value;
+  const month = document.getElementById("mMonth").value;
+
+  if (!year || !month) {
+    alert("Enter year and select month");
+    return;
+  }
+
+  fetch(`http://localhost:5000/api/meal-monthly-student/${year}/${month}`)
+    .then(res => res.json())
+    .then(data => {
+      const table = document.getElementById("monthlyStudentTable");
+      table.innerHTML = "";
+
+      if (data.length === 0) {
+        table.innerHTML = "<tr><td colspan='4'>No data for this month</td></tr>";
+        return;
+      }
+
+      data.forEach(r => {
+        table.innerHTML += `
+          <tr>
+            <td>${r.username}</td>
+            <td>${r.veg_count}</td>
+            <td>${r.nonveg_count}</td>
+            <td>${r.total}</td>
+          </tr>
+        `;
+      });
+    })
+    .catch(() => alert("Failed to load monthly student report"));
+}
+</script>
+
+</body>
+</html>
